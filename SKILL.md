@@ -136,9 +136,18 @@ Returns all known sellers with bounds, confidence, and historical stats. Call be
 ### 4. `GET /coop/analytics` — Coordination Statistics
 ```json
 {
-  "total_registrations": 84, "bundles_formed": 12,
-  "conflicts_resolved": 9, "limit_exceeded_count": 3,
-  "rounds_processed": 21, "active_pools": 2, "known_sellers": 50
+  "total_registrations": 84,
+  "bundles_formed": 12,
+  "conflicts_resolved": 9,
+  "limit_exceeded_count": 3,
+  "rounds_processed": 21,
+  "active_pools": 2,
+  "known_sellers": 5,
+  "total_attempts": 32,
+  "total_successes": 30,
+  "deal_success_rate": 0.9375,
+  "throughput": 1.43,
+  "friction_rate": 0.0357
 }
 ```
 
