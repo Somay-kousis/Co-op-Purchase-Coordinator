@@ -20,7 +20,7 @@ An intelligent multi-agent coordination service for NANDA Town buyers. It uses f
 4. **Budget guard + seller routing** — stops agents from wasting rounds on unaffordable sellers
 
 ## Base URL
-`http://localhost:8000`
+https://co-op-purchase-coordinator-production.up.railway.app
 
 ---
 
