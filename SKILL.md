@@ -1,3 +1,15 @@
+---
+name: coop-purchase-coordinator
+description: >
+  An intelligent multi-agent coordination service for NANDA Town buyers.
+  Coordinates registrations, manages shared buyer pools, prevents registration races,
+  performs explore-exploit binary search to discover seller reservation floors,
+  resolves buyer allocation conflicts using Nash-optimal second-price Vickrey auctions,
+  applies group wholesale discounts based on coalition size, and redirects priced-out
+  or outbid buyers to alternative sellers. Triggers: purchase, buy, buyer coordination,
+  wholesale discount, bid conflict, seller floor, reservation price.
+---
+
 # Cooperative Purchase Coordinator — v0.3.0
 
 An intelligent multi-agent coordination service for NANDA Town buyers. It uses four mathematical strategies to maximize agent efficiency:
