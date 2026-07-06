@@ -446,10 +446,27 @@ async def get_analytics():
     Returns aggregate coordination statistics across all rounds.
     """
     active_pools = sum(1 for v in registrations.values() if v)
+    
+    total_attempts = sum(limits.get("attempts", 0) for limits in seller_limits.values())
+    total_successes = sum(limits.get("successes", 0) for limits in seller_limits.values())
+    
+    deal_success_rate = (total_successes / total_attempts) if total_attempts > 0 else 0.0
+    
+    rounds = _analytics.get("rounds_processed", 0)
+    throughput = (total_successes / rounds) if rounds > 0 else 0.0
+    
+    total_regs = _analytics.get("total_registrations", 0)
+    friction_rate = (_analytics.get("limit_exceeded_count", 0) / total_regs) if total_regs > 0 else 0.0
+    
     return {
         **_analytics,
         "active_pools": active_pools,
         "known_sellers": len(seller_limits),
+        "total_attempts": total_attempts,
+        "total_successes": total_successes,
+        "deal_success_rate": round(deal_success_rate, 4),
+        "throughput": round(throughput, 2),
+        "friction_rate": round(friction_rate, 4),
     }
 
 

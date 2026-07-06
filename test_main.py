@@ -331,9 +331,12 @@ async def test_analytics_increments():
             register(ac, "b3", "seller-1", "p1", 80, round_=2),
             register(ac, "b4", "seller-1", "p2", 80, round_=2),
         )
-        # 1 limit_exceeded
+        # 1 limit_exceeded (1 attempt, 0 successes)
         await report(ac, "seller-2", 70, False)
         await register(ac, "b5", "seller-2", "p1", 50, round_=3)
+
+        # 1 success (1 attempt, 1 success)
+        await report(ac, "seller-0", 55, True)
 
         res = await ac.get("/coop/analytics")
         data = res.json()
@@ -343,6 +346,13 @@ async def test_analytics_increments():
         assert data["bundles_formed"] >= 1
         assert data["limit_exceeded_count"] >= 1
         assert data["rounds_processed"] >= 3
+
+        # Calculated fields
+        assert data["total_attempts"] == 2
+        assert data["total_successes"] == 1
+        assert data["deal_success_rate"] == 0.5
+        assert data["throughput"] == round(1 / data["rounds_processed"], 2)
+        assert data["friction_rate"] == round(data["limit_exceeded_count"] / data["total_registrations"], 4)
 
 
 # ---------------------------------------------------------------------------
