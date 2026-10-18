@@ -1,5 +1,13 @@
 # Co-op Purchase Coordinator
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB.svg" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-backend-009688.svg" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Pydantic-v2-E92063.svg" alt="Pydantic" />
+  <img src="https://img.shields.io/badge/Docker-python%203.12--slim-2496ED.svg" alt="Docker" />
+  <img src="https://img.shields.io/badge/Google%20Cloud%20Run-deploy-4285F4.svg" alt="Google Cloud Run" />
+</p>
+
 **v0.3.0** — Cooperative purchase and conflict resolution coordinator for NANDA Town agents.
 
 ## What it does
