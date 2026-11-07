@@ -1,83 +1,62 @@
 # Co-op Purchase Coordinator
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB.svg" alt="Python" />
-  <img src="https://img.shields.io/badge/FastAPI-backend-009688.svg" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/Pydantic-v2-E92063.svg" alt="Pydantic" />
-  <img src="https://img.shields.io/badge/Docker-python%203.12--slim-2496ED.svg" alt="Docker" />
-  <img src="https://img.shields.io/badge/Google%20Cloud%20Run-deploy-4285F4.svg" alt="Google Cloud Run" />
-</p>
-
-**v0.3.0** — Cooperative purchase and conflict resolution coordinator for NANDA Town agents.
+A small FastAPI service that buyer agents in NANDA Town call before they bid on a seller. It stops agents from outbidding each other for the same item, groups agents buying from the same seller into one discounted bid, and learns each seller's lowest price from past outcomes. v0.3.0, Python 3.12+.
 
 ## What it does
 
-Exposes a REST API that AI agents call before buying from a seller. The service:
+Each buyer registers its intent (seller, product, max budget) before buying and reports the result after. From those reports the service decides:
 
-- **Resolves conflicts** when multiple agents want the same product (second-price / Vickrey auction, Nash-optimal floor-adjusted bid)
-- **Bundles wholesale** when agents want different products from the same seller (Shapley-inspired coalition discount)
-- **Converges on seller prices** using binary search + explore-exploit strategy (`~7 rounds` to exact price)
-- **Blocks wasted bids** via a budget guard that tells buyers to pivot when the known seller floor exceeds their budget
-- **Routes to alternatives** by recommending the cheapest known seller when a buyer needs to pivot
+- **Same product, several buyers:** a second-price auction. The highest budget wins and is told to offer `max(second_highest_budget + 1, known_seller_floor)`, capped at its own budget, so it does not offer below a price the seller already rejected. Losers are told to pivot, with the cheapest known seller they can afford.
+- **Different products, same seller:** a group bid with a discount on the probe price: 2 buyers 5% off, 3 buyers 12% off, 4 or more 20% off.
+- **Seller price:** binary search over the marketplace range 10 to 100. A rejected offer raises the lower bound, an accepted one lowers the upper bound. Probing the midpoint halves the range each round, so the floor is found in about 7 rounds (log2 90). `confidence = 1 - current_range / 90`. Below 0.5 the service probes the midpoint; at 0.5 or above it bids the known floor.
+- **Budget guard:** if the known floor is above a buyer's budget, the buyer is told to pivot and pointed at the cheapest known seller it can afford.
 
-## Quick Start
+46 tests cover conflict resolution, bundling, pricing, routing, pool expiry, analytics, persistence, input validation, concurrent buyers, and regressions for 3 fixed bugs.
+
+## API
+
+| Method | Path | Use |
+|--------|------|-----|
+| `POST` | `/coop/register` | Register intent. Call before every buy attempt. |
+| `POST` | `/coop/report` | Report the outcome. Call after every attempt. |
+| `GET` | `/coop/sellers` | Known sellers with bounds, confidence and success stats |
+| `GET` | `/coop/analytics` | Totals across all rounds |
+| `GET` | `/coop/status` | Active pools and learned seller limits |
+| `POST` | `/coop/clear` | Reset pools. Keeps what it learned about sellers. |
+
+[SKILL.md](SKILL.md) is the integration guide for agents, with request and response examples.
+
+## Run it
 
 ```bash
-# Install
 pip install "fastapi>=0.110.0" "uvicorn[standard]>=0.28.0" "pydantic>=2.6.0"
-
-# Run locally
 uvicorn main:app --reload
-
-# Open docs
-open http://localhost:8000/docs
+# docs at http://localhost:8000/docs
 ```
 
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/coop/register` | Register purchase intent (call before every buy attempt) |
-| `POST` | `/coop/report` | Report transaction outcome (always call after each attempt) |
-| `GET` | `/coop/sellers` | Browse known sellers with confidence + stats |
-| `GET` | `/coop/analytics` | Aggregate coordination statistics |
-| `GET` | `/coop/status` | Active pool state + learned seller limits |
-| `POST` | `/coop/clear` | Reset pool state (preserves seller knowledge) |
-
-See [SKILL.md](SKILL.md) for full agent integration guide with examples.
-
-## Run Tests
+Tests:
 
 ```bash
 pip install pytest pytest-asyncio anyio httpx
 pytest -v
 ```
 
-**46 tests** covering: conflict resolution, bundling, Nash pricing, explore-exploit, group discounts, seller routing, pool TTL, analytics, persistence, input validation, concurrency, and 3 regression bugs.
-
-## Deploy
-
-### Docker
+Docker:
 
 ```bash
 docker build -t coop-coordinator .
 docker run -p 8080:8080 coop-coordinator
 ```
 
-### Google Cloud Run
+Google Cloud Run:
 
 ```bash
-gcloud run deploy coop-coordinator \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 8080
+gcloud run deploy coop-coordinator --source . --region us-central1 --allow-unauthenticated --port 8080
 ```
 
-## Mathematical Foundations
+## Limitations
 
-- **Binary search**: converges on seller's reservation price in `log₂(90) ≈ 7` rounds
-- **Explore-exploit**: probe midpoint when `confidence < 0.5`; bid floor when `confidence ≥ 0.5`  
-- **Nash-optimal auction**: winner pays `max(second_price + 1, seller_floor)` — prevents wasted rounds below seller floor
-- **Shapley discount**: 2 buyers → 5% off, 3 → 12% off, 4+ → 20% off midpoint probe price
-- **Confidence**: `1 - (current_range / 90)` — 0.0 = no info, 1.0 = exact price known
+- Pools live in memory and the container runs one uvicorn worker. Running more than one instance splits the pools.
+- Learned seller limits are saved to `seller_limits.json` next to `main.py`. On Cloud Run that disk is wiped when the instance restarts.
+- No authentication. Any caller can register, report or clear.
+- Pools older than 5 minutes are dropped.
